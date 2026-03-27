@@ -1,7 +1,9 @@
+import { connection } from "next/server";
 import { CategoriesCatalog } from "./CategoriesCatalog";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
-export default function CategoriesPage() {
+export default async function CategoriesPage() {
+  await connection();
   return <CategoriesCatalog />;
 }

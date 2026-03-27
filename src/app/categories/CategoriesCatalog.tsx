@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,7 +24,7 @@ type Cat = {
 
 type Brand = { id: string; name: string };
 
-export function CategoriesCatalog() {
+function CategoriesCatalogInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -380,5 +387,22 @@ export function CategoriesCatalog() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CategoriesCatalogFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f8f9fa] text-sm text-[#888]">
+      Chargement du catalogue…
+    </div>
+  );
+}
+
+/** Suspense côté client : requis pour `useSearchParams` pendant le prérendu (ex. Vercel). */
+export function CategoriesCatalog() {
+  return (
+    <Suspense fallback={<CategoriesCatalogFallback />}>
+      <CategoriesCatalogInner />
+    </Suspense>
   );
 }
