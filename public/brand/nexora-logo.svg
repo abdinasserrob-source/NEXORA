@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="NEXORA">
+  <defs>
+    <linearGradient id="nx" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="100%" style="stop-color:#9333ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0a0f1a"/>
+  <!-- Logo : passer de la forme "M" à une forme "N" (même style/gradient) -->
+  <path fill="url(#nx)" d="M18 46V18H24L48 46H54V18H48L18 18Z"/>
+</svg>

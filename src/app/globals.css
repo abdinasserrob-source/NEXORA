@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* Style boutique tech type maquette : clair, cyan, marine, peu de violet */
+:root {
+  --shop-bg: #f4f6f9;
+  --shop-surface: #ffffff;
+  --shop-text: #1a1d26;
+  --shop-muted: #5c6578;
+  --shop-cyan: #00b8d9;
+  --shop-cyan-hover: #0098b0;
+  --shop-navy: #1a2744;
+  --shop-peach: #fff0e6;
+  --shop-border: #e4e7ee;
+  --shop-hero-overlay: rgba(26, 39, 68, 0.78);
+
+  /* Alias : anciennes classes Tailwind nexora-* pointent sur la palette claire */
+  --nexora-bg: var(--shop-bg);
+  --nexora-surface: #eef1f6;
+  --nexora-card: var(--shop-surface);
+  --nexora-border: var(--shop-border);
+  --nexora-cyan: var(--shop-cyan);
+  --nexora-purple: var(--shop-navy);
+  --nexora-text: var(--shop-text);
+  --nexora-muted: var(--shop-muted);
+}
+
+@theme inline {
+  --color-shop-bg: var(--shop-bg);
+  --color-shop-surface: var(--shop-surface);
+  --color-shop-text: var(--shop-text);
+  --color-shop-muted: var(--shop-muted);
+  --color-shop-cyan: var(--shop-cyan);
+  --color-shop-cyan-hover: var(--shop-cyan-hover);
+  --color-shop-navy: var(--shop-navy);
+  --color-shop-peach: var(--shop-peach);
+  --color-shop-border: var(--shop-border);
+  --color-nexora-bg: var(--nexora-bg);
+  --color-nexora-surface: var(--nexora-surface);
+  --color-nexora-card: var(--nexora-card);
+  --color-nexora-cyan: var(--nexora-cyan);
+  --color-nexora-purple: var(--nexora-purple);
+  --color-nexora-text: var(--nexora-text);
+  --color-nexora-muted: var(--nexora-muted);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--shop-bg);
+  color: var(--shop-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--shop-border);
+  box-shadow: 0 8px 32px rgba(26, 39, 68, 0.06);
+}
+
+/* Accent marque : cyan → teal (pas de violet) */
+.text-gradient {
+  background: linear-gradient(105deg, var(--shop-cyan) 0%, #047a8f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
