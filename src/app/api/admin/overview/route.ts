@@ -2,11 +2,12 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
 import { NextResponse } from "next/server";
 
-export async function GET() {
-  const auth = await requireRole(["ADMIN"]);
-  if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+export async function GET(req: Request) {
+  try {
+    const auth = await requireRole(["ADMIN"], req);
+    if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const [users, orders, revenue, products, pendingApps] = await Promise.all([
+    const [users, orders, revenue, products, pendingApps] = await Promise.all([
     prisma.user.count(),
     prisma.order.count(),
     prisma.order.aggregate({
@@ -59,4 +60,11 @@ export async function GET() {
       productSample: o.items[0]?.product?.name ?? "—",
     })),
   });
+  } catch (e) {
+    console.error("[GET /api/admin/overview]", e);
+    return NextResponse.json(
+      { error: "Impossible de charger les statistiques (base ou serveur)." },
+      { status: 500 }
+    );
+  }
 }

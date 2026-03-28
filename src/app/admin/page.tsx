@@ -32,16 +32,27 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     void fetch("/api/admin/overview", { credentials: "include" })
-      .then((r) => {
+      .then(async (r) => {
         if (r.status === 403) {
           setForbidden(true);
-          return null;
+          return;
         }
-        return r.json();
+        if (!r.ok) {
+          toast.error(`Tableau de bord indisponible (${r.status})`);
+          return;
+        }
+        const text = await r.text();
+        if (!text.trim()) {
+          toast.error("Réponse serveur vide");
+          return;
+        }
+        try {
+          setData(JSON.parse(text) as Overview);
+        } catch {
+          toast.error("Réponse serveur invalide (JSON)");
+        }
       })
-      .then((d) => {
-        if (d) setData(d as Overview);
-      });
+      .catch(() => toast.error("Erreur réseau (tableau de bord)"));
     void fetch("/api/admin/users", { credentials: "include" }).then((r) =>
       r.ok ? r.json().then((d) => setUsers(d.users ?? [])) : null
     );
