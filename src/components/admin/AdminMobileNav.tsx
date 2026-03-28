@@ -13,7 +13,6 @@ const LINKS = [
   { href: "/admin/vendeurs", label: "Vendeurs" },
   { href: "/admin/promo-produits", label: "Promo produits" },
   { href: "/admin/parametres", label: "Réglages" },
-  { href: "/admin/algo-ai", label: "Algo AI" },
   { href: "/admin/reviews", label: "Avis" },
 ];
 

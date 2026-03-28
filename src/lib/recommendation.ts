@@ -1,5 +1,10 @@
 import type { Product } from "@/generated/prisma/client";
 import { BrowseEventType } from "@/generated/prisma/enums";
+import {
+  countOrdersForRecoThreshold,
+  countProductsWithTags,
+  getRecoAlgoConfigPayload,
+} from "./reco-algo-config";
 import { prisma } from "./db";
 
 function parseCrossSell(p: Product): string[] {
@@ -480,62 +485,99 @@ export async function getRecommendations(opts: {
   }
 
   if (opts.placement === "HOME") {
+    const [cfg, orderCount, taggedCount] = await Promise.all([
+      getRecoAlgoConfigPayload(),
+      countOrdersForRecoThreshold(),
+      countProductsWithTags(),
+    ]);
+
+    const mode = opts.algoMode ?? cfg.mode ?? "HYBRID";
     const hasSeeds = seedIds.length > 0;
     if (!opts.userId || (eventCount === 0 && !hasSeeds)) {
       const sorted = [...eligible].sort((a, b) => {
         if (a.isPromo !== b.isPromo) return a.isPromo ? -1 : 1;
         return b.createdAt.getTime() - a.createdAt.getTime();
       });
-      return sorted.slice(0, limit).map((p) => ({
+      const out = sorted.slice(0, limit).map((p) => ({
         product: p,
         score: 1,
         score01: 0.5,
         algorithm: "guest_new_deterministic",
         reason: "Sélection tendance et nouveautés du catalogue.",
       }));
+      return out;
     }
 
-    const mode = opts.algoMode ?? "HYBRID";
-    const w =
-      opts.hybridWeights ??
-      (signalStrength < 18 ? { content: 0.8, collab: 0.2 } : { content: 0.4, collab: 0.6 });
+    let wh = cfg.enabled.hybrid_fill ? cfg.weights.hybrid_fill : 0;
+    let wc = cfg.enabled.collab_filter ? cfg.weights.collab_filter : 0;
+    let wt = cfg.enabled.content_based ? cfg.weights.content_based : 0;
+
+    if (!cfg.enabled.collab_filter) {
+      wc = 0;
+    } else if (orderCount < cfg.thresholds.collab_min_orders) {
+      wc = 0;
+    }
+    if (!cfg.enabled.content_based) {
+      wt = 0;
+    } else if (taggedCount < cfg.thresholds.content_min_tagged) {
+      wt = 0;
+    }
+
+    if (mode === "CONTENT") {
+      wh = 0;
+      wc = 0;
+    } else if (mode === "COLLAB") {
+      wh = 0;
+      wt = 0;
+    }
+
+    let sumW = wh + wc + wt;
+
+    if (sumW <= 0) {
+      const sorted = [...eligible].sort((a, b) => {
+        if (a.isPromo !== b.isPromo) return a.isPromo ? -1 : 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+      const out = sorted.slice(0, limit).map((p) => ({
+        product: p,
+        score: 1,
+        score01: 0.5,
+        algorithm: "deterministic_fallback",
+        reason: "Pondérations nulles — nouveautés et promos.",
+      }));
+      return out;
+    }
+
+    wh /= sumW;
+    wc /= sumW;
+    wt /= sumW;
 
     const scored = eligible.map((p) => {
       const cs = contentScore(p, categoryWeights, brandWeights, avgPrice);
       const cd = collabMap.get(p.id);
       const col = cd?.score ?? 0;
       const peers = cd?.peers ?? 0;
-      let score: number;
-      let algorithm: string;
-      let reason: string;
-      let similarUserCount: number | undefined;
+      const sFill = (cs + col) / 2;
+      const score = wh * sFill + wc * col + wt * cs;
 
-      if (mode === "CONTENT") {
-        score = cs;
-        algorithm = "content";
-        reason = "Aligné sur les catégories, marques et prix que vous consultez.";
-      } else if (mode === "COLLAB") {
-        score = col;
-        algorithm = "collab";
-        similarUserCount = peers;
-        reason =
-          peers > 0
-            ? `${peers} utilisateur${peers > 1 ? "s" : ""} au profil proche ${peers > 1 ? "ont aussi consulté" : "a aussi consulté"} cet article.`
-            : "Recommandation basée sur des parcours similaires.";
-      } else {
-        score = cs * w.content + col * w.collab;
-        algorithm = "hybrid";
-        similarUserCount = peers;
-        reason =
-          peers > 0
-            ? `Mix profil (${Math.round(w.content * 100)} %) et utilisateurs similaires (${Math.round(w.collab * 100)} %) · ${peers} pair${peers > 1 ? "s" : ""}.`
-            : `Recommandé pour vous · profil ${Math.round(w.content * 100)} % / affinité collective ${Math.round(w.collab * 100)} %.`;
-      }
+      let algorithm = "reco_blend";
+      if (wh >= wc && wh >= wt && wh > 0) algorithm = "hybrid_fill";
+      else if (wc >= wt && wc > 0) algorithm = "collab_filter";
+      else if (wt > 0) algorithm = "content_based";
+
+      const similarUserCount = peers;
+      const reason =
+        peers > 0 ?
+          `Blend reco (${Math.round(wh * 100)} % hybrid_fill · ${Math.round(wc * 100)} % collab · ${Math.round(wt * 100)} % contenu) · ${peers} pair${peers > 1 ? "s" : ""}.`
+        : `Blend reco (${Math.round(wh * 100)} % / ${Math.round(wc * 100)} % / ${Math.round(wt * 100)} %).`;
+
       return { product: p, score, algorithm, reason, similarUserCount };
     });
 
     scored.sort((a, b) => b.score - a.score);
-    return normalizeScores(scored.slice(0, limit));
+    const items = normalizeScores(scored.slice(0, limit));
+
+    return items;
   }
 
   const scored = eligible.map((p) => ({

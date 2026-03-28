@@ -2,6 +2,7 @@ import type { Product } from "@/generated/prisma/client";
 import { BrowseEventType } from "@/generated/prisma/enums";
 import { prisma } from "./db";
 import { recoUserTag } from "./reco-invalidate";
+import { getEffectiveRecoHomeMode } from "./reco-algo-config";
 import {
   getCollaborativeRecommendations,
   getRecommendations,
@@ -76,13 +77,6 @@ async function followedVendorProducts(userId: string, limit: number): Promise<Pe
   };
 }
 
-function normalizeHybridAlgo(
-  v: string | null | undefined
-): "HYBRID" | "CONTENT" | "COLLAB" {
-  if (v === "CONTENT" || v === "COLLAB" || v === "HYBRID") return v;
-  return "HYBRID";
-}
-
 async function computePersonalizedHome(userId: string): Promise<{
   blocks: PersonalizedHomeBlock[];
   hybridBadge: string;
@@ -129,11 +123,7 @@ async function computePersonalizedHome(userId: string): Promise<{
   const actionCount = evCount + wishCount + vendorFavCount + paidOrdersCount + Math.min(purchasedLineCount, 12);
   const hasHistory = actionCount > 0;
 
-  const setting = await prisma.platformSetting.findUnique({
-    where: { key: "reco_home_mode" },
-    select: { value: true },
-  });
-  const algoMode = normalizeHybridAlgo(setting?.value);
+  const algoMode = await getEffectiveRecoHomeMode();
 
   const blocks: PersonalizedHomeBlock[] = [];
   const globalExclude = new Set<string>();

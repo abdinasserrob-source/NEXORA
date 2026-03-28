@@ -1,8 +1,29 @@
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Role } from "@/generated/prisma/enums";
 
 const COOKIE = "nexora_token";
+
+/** Extrait le JWT depuis l’en-tête brut `Cookie` (fiable dans les Route Handlers). */
+export function readNexoraTokenFromCookieHeader(cookieHeader: string | null | undefined): string | null {
+  if (!cookieHeader) return null;
+  for (const segment of cookieHeader.split(";")) {
+    const part = segment.trim();
+    const i = part.indexOf("=");
+    if (i === -1) continue;
+    const name = part.slice(0, i).trim();
+    if (name !== COOKIE) continue;
+    let value = part.slice(i + 1).trim();
+    if (!value) return null;
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      /* valeur brute */
+    }
+    return value || null;
+  }
+  return null;
+}
 
 function secret() {
   const s = process.env.JWT_SECRET;
@@ -55,8 +76,12 @@ export async function clearAuthCookie() {
 }
 
 export async function getAuthFromCookies(): Promise<JwtPayload | null> {
-  const c = await cookies();
-  const token = c.get(COOKIE)?.value;
+  const h = await headers();
+  let token = readNexoraTokenFromCookieHeader(h.get("cookie"));
+  if (!token) {
+    const c = await cookies();
+    token = c.get(COOKIE)?.value ?? null;
+  }
   if (!token) return null;
   return verifyToken(token);
 }

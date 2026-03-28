@@ -16,6 +16,15 @@ export const revalidate = 300;
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1920&q=85";
 
+function parseProductImages(raw: string): string[] {
+  try {
+    const j = JSON.parse(raw) as unknown;
+    return Array.isArray(j) ? j.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 function buildGuestRecoSample(
   trending: { id: string; name: string; slug: string; price: number; images: string[] }[],
   nouveautes: { id: string; name: string; slug: string; price: number; images: string[] }[]
@@ -60,7 +69,7 @@ export default async function HomePage() {
     slug: p.slug,
     price: p.price,
     comparePrice: p.comparePrice ?? (p.isPromo ? p.price * 1.2 : null),
-    images: JSON.parse(p.images) as string[],
+    images: parseProductImages(p.images),
   }));
 
   const productCards = products.map((p) => ({
@@ -68,7 +77,7 @@ export default async function HomePage() {
     name: p.name,
     slug: p.slug,
     price: p.price,
-    images: JSON.parse(p.images) as string[],
+    images: parseProductImages(p.images),
   }));
 
   const trendingCards = trendingRaw.map((p) => {
@@ -80,7 +89,7 @@ export default async function HomePage() {
       name: p.name,
       slug: p.slug,
       price: p.price,
-      images: JSON.parse(p.images) as string[],
+      images: parseProductImages(p.images),
       badge,
       soldHint,
     };
@@ -92,14 +101,14 @@ export default async function HomePage() {
       name: p.name,
       slug: p.slug,
       price: p.price,
-      images: JSON.parse(p.images) as string[],
+      images: parseProductImages(p.images),
     })),
     products.map((p) => ({
       id: p.id,
       name: p.name,
       slug: p.slug,
       price: p.price,
-      images: JSON.parse(p.images) as string[],
+      images: parseProductImages(p.images),
     }))
   );
 

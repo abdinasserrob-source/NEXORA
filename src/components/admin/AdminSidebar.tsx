@@ -7,7 +7,6 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
-  BarChart3,
   Package,
   ShoppingBag,
   Users,
@@ -18,7 +17,6 @@ import {
   Store,
   Bell,
   UserCircle,
-  Sparkles,
   Star,
   RotateCcw,
 } from "lucide-react";
@@ -27,7 +25,6 @@ import { cn } from "@/lib/cn";
 const ITEMS: { href: string; label: string; icon: ComponentType<{ className?: string }> }[] =
   [
     { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
-    { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/admin/inventaire", label: "Inventaire", icon: Package },
     { href: "/admin/promo-produits", label: "Promo produits", icon: Megaphone },
     { href: "/admin/commandes", label: "Commandes", icon: ShoppingBag },
@@ -37,7 +34,6 @@ const ITEMS: { href: string; label: string; icon: ComponentType<{ className?: st
     { href: "/admin/marketing", label: "Marketing", icon: Megaphone },
     { href: "/admin/vendeurs", label: "Vendeurs", icon: Store },
     { href: "/admin/notifications", label: "Notifications", icon: Bell },
-    { href: "/admin/algo-ai", label: "Algo AI", icon: Sparkles },
     { href: "/admin/profil", label: "Profil", icon: UserCircle },
     { href: "/admin/reviews", label: "Avis signalés", icon: Star },
     { href: "/admin/parametres", label: "Paramètres", icon: Settings },

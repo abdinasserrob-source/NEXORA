@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bell, HelpCircle, Plus, Sparkles } from "lucide-react";
+import { Bell, HelpCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Overview = {
@@ -20,8 +20,6 @@ type Overview = {
     customer: string;
     productSample: string;
   }[];
-  aiInsight: string;
-  recommendationStats: { ctr: number; conversionReco: number };
 };
 
 export default function AdminDashboardPage() {
@@ -83,7 +81,7 @@ export default function AdminDashboardPage() {
         <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[#e8eaef] bg-white px-4 py-4 md:px-8">
           <input
             type="search"
-            placeholder="Rechercher données, rapports, utilisateurs…"
+            placeholder="Rechercher utilisateurs, commandes…"
             className="hidden max-w-xl flex-1 rounded-full border border-[#e8eaef] bg-[#f8f9fa] px-5 py-2.5 text-sm md:block"
           />
           <div className="flex items-center gap-2">
@@ -97,13 +95,6 @@ export default function AdminDashboardPage() {
             <button type="button" className="rounded-full p-2 text-[#666] hover:bg-[#f8f9fa]">
               <HelpCircle className="size-5" />
             </button>
-            <a
-              href="/api/admin/reports?format=csv&range=month"
-              className="flex items-center gap-2 rounded-full bg-[#00d4ff] px-4 py-2 text-sm font-semibold text-white"
-            >
-              <Plus className="size-4" />
-              Export CSV
-            </a>
           </div>
         </header>
 
@@ -150,32 +141,6 @@ export default function AdminDashboardPage() {
                 <div className={`mt-3 h-1.5 rounded-full ${k.color} opacity-70`} />
               </div>
             ))}
-          </div>
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-3">
-            <div className="rounded-2xl border border-[#e8eaef] bg-white p-6 shadow-sm lg:col-span-2">
-              <h2 className="font-semibold text-[#333]">Performance recommandations</h2>
-              <p className="mt-1 text-sm text-[#888]">
-                CTR : {(data.recommendationStats.ctr * 100).toFixed(2)} % · Conversion post-clic :{" "}
-                {(data.recommendationStats.conversionReco * 100).toFixed(2)} %
-              </p>
-              <div className="mt-6 flex h-40 items-end gap-2">
-                {[35, 52, 48, 61, 55, 70, 66].map((h, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-t-md bg-gradient-to-t from-[#00d4ff]/30 to-[#00d4ff]"
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-[#e8eaef] bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-2 font-semibold text-[#333]">
-                <Sparkles className="size-5 text-amber-500" />
-                Insight IA
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-[#555]">{data.aiInsight}</p>
-            </div>
           </div>
 
           <div className="mt-8 rounded-2xl border border-[#e8eaef] bg-white shadow-sm">

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getEffectiveRecoHomeMode } from "@/lib/reco-algo-config";
 import { NextResponse } from "next/server";
 import { getRecommendations } from "@/lib/recommendation";
 import { NotifType } from "@/generated/prisma/enums";
@@ -35,11 +36,7 @@ export async function POST(req: Request) {
 
   const limitUsers = parsed.data.limitUsers ?? 200;
 
-  const algoRow = await prisma.platformSetting.findUnique({ where: { key: "reco_home_mode" } });
-  const algoMode =
-    algoRow?.value === "CONTENT" || algoRow?.value === "COLLAB" || algoRow?.value === "HYBRID"
-      ? algoRow.value
-      : "HYBRID";
+  const algoMode = await getEffectiveRecoHomeMode();
 
   const title = `Recommandations pour vous — ${slot}h`;
   const users = await prisma.user.findMany({

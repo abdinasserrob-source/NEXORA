@@ -605,6 +605,48 @@ model PlatformSetting {
   value String
 }
 
+/// Configuration singleton du moteur reco (page admin /algo-ai).
+model RecoAlgoConfig {
+  id                       String   @id @default("default")
+  mode                     String   @default("HYBRID")
+  hybridFillEnabled        Boolean  @default(true)
+  collabFilterEnabled      Boolean  @default(true)
+  contentBasedEnabled      Boolean  @default(true)
+  weightHybridFill         Int      @default(34)
+  weightCollabFilter       Int      @default(33)
+  weightContentBased       Int      @default(33)
+  activationMinHybrid      Int      @default(5)
+  activationMinCollab      Int      @default(5)
+  activationMinContent     Int      @default(5)
+  thresholdCollabMinOrders Int      @default(50)
+  thresholdContentMinTagged Int     @default(20)
+  updatedAt                DateTime @updatedAt
+}
+
+model RecoAlgoConfigHistory {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  adminId     String?
+  adminEmail  String?
+  summary     String
+  oldMode     String?
+  newMode     String?
+  detailsJson String?
+}
+
+/// Une ligne par appel reco (ex. HOME) : poids appliqués, exclusions.
+model AlgoImpressionLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  placement   String
+  userId      String?
+  sessionKey  String?
+  payloadJson String
+
+  @@index([createdAt])
+  @@index([placement, createdAt])
+}
+
 model HomeSection {
   id        String  @id @default(cuid())
   title     String
