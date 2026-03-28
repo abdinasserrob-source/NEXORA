@@ -18,14 +18,25 @@ function LoginForm() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password }),
-    });
+    let r: Response;
+    try {
+      r = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      toast.error("Connexion impossible (réseau ou serveur arrêté).");
+      return;
+    }
+    const data = (await r.json().catch(() => null)) as { error?: string } | null;
     if (!r.ok) {
-      toast.error("Identifiants invalides");
+      toast.error(
+        typeof data?.error === "string" && data.error.length > 0
+          ? data.error
+          : "Identifiants invalides"
+      );
       return;
     }
     toast.success("Connecté");

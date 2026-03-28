@@ -1,4 +1,6 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { searchTokens } from "@/lib/search-tokens";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -18,18 +20,13 @@ function parseImages(raw: string): string[] {
   }
 }
 
-function tokenize(q: string): string[] {
-  return q
-    .toLowerCase()
-    .split(/[^a-z0-9àâçéèêëîïôûùüÿñæœ]+/gi)
-    .map((t) => t.trim())
-    .filter((t) => t.length >= 3)
-    .slice(0, 4);
-}
-
-async function analyzeImageWithOpenAI(dataUrl: string): Promise<VisionResult | null> {
+async function analyzeImageWithOpenAI(
+  dataUrl: string
+): Promise<{ ok: true; data: VisionResult } | { ok: false; reason: string }> {
   const key = process.env.OPENAI_API_KEY;
-  if (!key?.trim()) return null;
+  if (!key?.trim()) {
+    return { ok: false, reason: "no_key" };
+  }
 
   const model = process.env.OPENAI_VISION_MODEL ?? process.env.OPENAI_CHAT_MODEL ?? "gpt-4o-mini";
   const prompt =
@@ -56,70 +53,111 @@ async function analyzeImageWithOpenAI(dataUrl: string): Promise<VisionResult | n
     }),
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const errBody = (await res.json()) as { error?: { message?: string } };
+      if (errBody?.error?.message) detail = errBody.error.message;
+    } catch {
+      /* ignore */
+    }
+    return { ok: false, reason: `openai_http_${detail}` };
+  }
+
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const raw = data.choices?.[0]?.message?.content?.trim();
-  if (!raw) return null;
+  if (!raw) {
+    return { ok: false, reason: "openai_empty" };
+  }
 
   const jsonText = raw.startsWith("{") ? raw : raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
-  if (!jsonText) return null;
+  if (!jsonText) {
+    return { ok: false, reason: "openai_parse" };
+  }
 
   try {
     const parsed = JSON.parse(jsonText) as Partial<VisionResult>;
-    return {
+    const vision: VisionResult = {
       objectLabel: String(parsed.objectLabel ?? "").trim(),
       query: String(parsed.query ?? "").trim(),
       categoryHint: String(parsed.categoryHint ?? "").trim(),
     };
+    return { ok: true, data: vision };
   } catch {
-    return null;
+    return { ok: false, reason: "openai_json" };
   }
 }
 
-export async function POST(req: Request) {
-  const fd = await req.formData().catch(() => null);
-  if (!fd) return NextResponse.json({ error: "Body invalide" }, { status: 400 });
-  const f = fd.get("file");
-  if (!(f instanceof File)) return NextResponse.json({ error: "Fichier manquant" }, { status: 400 });
+function tokensFromFileName(name: string): string[] {
+  const base = name.replace(/\.[^.]+$/i, "").replace(/[-_]+/g, " ");
+  return searchTokens(base);
+}
 
-  const mime = f.type || "image/jpeg";
-  const bytes = Buffer.from(await f.arrayBuffer());
-  if (!bytes.length) return NextResponse.json({ error: "Fichier vide" }, { status: 400 });
-  if (bytes.length > 8 * 1024 * 1024) return NextResponse.json({ error: "Image trop grande (max 8MB)" }, { status: 400 });
+async function findProductsByTokens(tokens: string[], fullFallback: string) {
+  const base: Prisma.ProductWhereInput = {
+    isFlagged: false,
+    stock: { gt: 0 },
+    archived: false,
+    seller: { banned: false },
+  };
 
-  const dataUrl = `data:${mime};base64,${bytes.toString("base64")}`;
-  const vision = await analyzeImageWithOpenAI(dataUrl);
-  if (!vision) {
-    return NextResponse.json(
-      { error: "Analyse image indisponible. Vérifiez OPENAI_API_KEY." },
-      { status: 503 }
-    );
+  if (tokens.length > 0) {
+    const orClauses = tokens.flatMap((t) => [
+      { name: { contains: t, mode: "insensitive" as const } },
+      { slug: { contains: t, mode: "insensitive" as const } },
+      { description: { contains: t, mode: "insensitive" as const } },
+    ]);
+    return prisma.product.findMany({
+      where: { ...base, OR: orClauses },
+      orderBy: { updatedAt: "desc" },
+      take: 18,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        comparePrice: true,
+        description: true,
+        images: true,
+        isPromo: true,
+      },
+    });
   }
 
-  const q = vision.query || vision.objectLabel;
-  const tokens = tokenize(q);
+  const phrase = fullFallback.trim();
+  if (phrase.length < 2) return [];
 
-  let direct = await prisma.product.findMany({
+  return prisma.product.findMany({
     where: {
-      isFlagged: false,
-      stock: { gt: 0 },
-      archived: false,
-      seller: { banned: false },
-      OR: tokens.length
-        ? tokens.flatMap((t) => [
-            { name: { contains: t, mode: "insensitive" as const } },
-            { slug: { contains: t, mode: "insensitive" as const } },
-            { description: { contains: t, mode: "insensitive" as const } },
-          ])
-        : [{ name: { contains: q, mode: "insensitive" as const } }],
+      ...base,
+      OR: [
+        { name: { contains: phrase, mode: "insensitive" as const } },
+        { slug: { contains: phrase, mode: "insensitive" as const } },
+        { description: { contains: phrase, mode: "insensitive" as const } },
+      ],
     },
     orderBy: { updatedAt: "desc" },
     take: 18,
-    select: { id: true, name: true, slug: true, price: true, comparePrice: true, description: true, images: true, isPromo: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      price: true,
+      comparePrice: true,
+      description: true,
+      images: true,
+      isPromo: true,
+    },
   });
+}
 
-  let mode: "direct" | "category" | "none" = "direct";
+async function runCategoryFallback(vision: VisionResult, q: string) {
+  let direct: Awaited<ReturnType<typeof findProductsByTokens>> = [];
+  let mode: "direct" | "category" | "none" | "filename" = "direct";
   let message = `Recherche image: "${vision.objectLabel || q}".`;
+
+  const tokens = searchTokens(vision.query || vision.objectLabel || q);
+  direct = await findProductsByTokens(tokens, q);
 
   if (direct.length === 0) {
     const cat = await prisma.category.findFirst({
@@ -143,7 +181,16 @@ export async function POST(req: Request) {
         },
         orderBy: { updatedAt: "desc" },
         take: 18,
-        select: { id: true, name: true, slug: true, price: true, comparePrice: true, description: true, images: true, isPromo: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          comparePrice: true,
+          description: true,
+          images: true,
+          isPromo: true,
+        },
       });
       if (sameCategory.length > 0) {
         direct = sameCategory;
@@ -159,15 +206,64 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    mode,
-    objectLabel: vision.objectLabel || q,
-    query: q,
-    message,
-    products: direct.map((p) => ({
-      ...p,
-      images: parseImages(p.images),
-    })),
-  });
+  return { direct, mode, message };
 }
 
+export async function POST(req: Request) {
+  const fd = await req.formData().catch(() => null);
+  if (!fd) return NextResponse.json({ error: "Body invalide" }, { status: 400 });
+  const f = fd.get("file");
+  if (!(f instanceof File)) return NextResponse.json({ error: "Fichier manquant" }, { status: 400 });
+
+  const mime = f.type || "image/jpeg";
+  const bytes = Buffer.from(await f.arrayBuffer());
+  if (!bytes.length) return NextResponse.json({ error: "Fichier vide" }, { status: 400 });
+  if (bytes.length > 8 * 1024 * 1024) return NextResponse.json({ error: "Image trop grande (max 8MB)" }, { status: 400 });
+
+  const dataUrl = `data:${mime};base64,${bytes.toString("base64")}`;
+  const analyzed = await analyzeImageWithOpenAI(dataUrl);
+
+  if (analyzed.ok) {
+    const vision = analyzed.data;
+    const q = vision.query || vision.objectLabel;
+    const { direct, mode, message } = await runCategoryFallback(vision, q);
+
+    return NextResponse.json({
+      mode,
+      objectLabel: vision.objectLabel || q,
+      query: q,
+      message,
+      products: direct.map((p) => ({
+        ...p,
+        images: parseImages(p.images),
+      })),
+    });
+  }
+
+  /* Repli sans vision IA : mots-clés tirés du nom du fichier (ex. iphone-15.jpg) */
+  const fnTokens = tokensFromFileName(f.name);
+  if (fnTokens.length > 0) {
+    const direct = await findProductsByTokens(fnTokens, fnTokens.join(" "));
+    const q = fnTokens.join(" ");
+    return NextResponse.json({
+      mode: "filename" as const,
+      objectLabel: q,
+      query: q,
+      message:
+        direct.length > 0
+          ? `Analyse IA indisponible — recherche d’après le nom du fichier (« ${f.name} »).`
+          : `Analyse IA indisponible. Aucun résultat pour « ${q} » (essayez de renommer l’image ou configurez OPENAI_API_KEY).`,
+      products: direct.map((p) => ({
+        ...p,
+        images: parseImages(p.images),
+      })),
+    });
+  }
+
+  const hint =
+    analyzed.reason === "no_key"
+      ? "Clé OpenAI absente : ajoutez OPENAI_API_KEY dans .env (ou renommez l’image, ex. smartphone-samsung.jpg)."
+      : "Analyse image indisponible. Vérifiez OPENAI_API_KEY et le crédit API, ou renommez le fichier avec des mots-clés.";
+
+  return NextResponse.json({ error: hint }, { status: 503 });
+}

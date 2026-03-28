@@ -3,6 +3,17 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+function postTrack(body: object) {
+  void fetch("/api/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  }).catch(() => {
+    /* best-effort : pas d’overlay si réseau / serveur indisponible */
+  });
+}
+
 /** Envoie PAGE_VIEW + mesure de scroll (étape 2). */
 export function BehaviorTracker() {
   const pathname = usePathname();
@@ -10,12 +21,7 @@ export function BehaviorTracker() {
 
   useEffect(() => {
     start.current = Date.now();
-    void fetch("/api/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ type: "PAGE_VIEW", path: pathname }),
-    });
+    postTrack({ type: "PAGE_VIEW", path: pathname });
 
     const onScroll = () => {
       const doc = document.documentElement;
@@ -23,15 +29,10 @@ export function BehaviorTracker() {
         ((doc.scrollTop + doc.clientHeight) / doc.scrollHeight) * 100
       );
       if (pct >= 25 && pct % 25 < 5) {
-        void fetch("/api/track", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            type: "SCROLL_DEPTH",
-            path: pathname,
-            meta: { scrollPct: pct },
-          }),
+        postTrack({
+          type: "SCROLL_DEPTH",
+          path: pathname,
+          meta: { scrollPct: pct },
         });
       }
     };
@@ -40,15 +41,10 @@ export function BehaviorTracker() {
     return () => {
       window.removeEventListener("scroll", onScroll);
       const ms = Date.now() - start.current;
-      void fetch("/api/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          type: "PAGE_VIEW",
-          path: pathname,
-          meta: { durationMs: ms },
-        }),
+      postTrack({
+        type: "PAGE_VIEW",
+        path: pathname,
+        meta: { durationMs: ms },
       });
     };
   }, [pathname]);

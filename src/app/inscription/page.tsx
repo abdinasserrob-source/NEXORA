@@ -23,15 +23,21 @@ function RegisterForm() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password, firstName, lastName }),
-    });
+    let r: Response;
+    try {
+      r = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password, firstName, lastName }),
+      });
+    } catch {
+      toast.error("Inscription impossible (réseau ou serveur arrêté).");
+      return;
+    }
+    const d = (await r.json().catch(() => null)) as { error?: string } | null;
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      toast.error(typeof d.error === "string" ? d.error : "Erreur");
+      toast.error(typeof d?.error === "string" && d.error.length > 0 ? d.error : "Erreur");
       return;
     }
     toast.success("Compte créé");

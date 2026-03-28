@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ShoppingCart, User, Search, Heart } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/components/PreferencesContext";
+import { SearchMediaButtons } from "@/components/SearchMediaButtons";
 
 type Me = {
   user:
@@ -106,9 +107,9 @@ export function Header() {
 
         <form
           onSubmit={onSearch}
-          className="order-2 flex min-w-0 flex-1 md:order-none md:max-w-md md:mx-4"
+          className="order-2 flex min-w-0 flex-1 items-center gap-1.5 md:order-none md:max-w-md md:mx-4"
         >
-          <div className="relative w-full">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-shop-muted" />
             <input
               value={q}
@@ -117,6 +118,7 @@ export function Header() {
               className="w-full rounded-full border border-shop-border bg-shop-bg py-2.5 pl-10 pr-4 text-sm text-shop-text outline-none ring-shop-cyan/30 focus:ring-2"
             />
           </div>
+          <SearchMediaButtons compact />
         </form>
 
         <div className="order-2 ml-auto flex items-center gap-2 md:order-none">

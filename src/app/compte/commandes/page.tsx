@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { usePreferences } from "@/components/PreferencesContext";
 import { Copy, Package } from "lucide-react";
+import { ReturnRequestModal } from "@/components/ReturnRequestModal";
+import { returnReasonLabel } from "@/lib/return-request-shared";
+
+type ReturnRequestBrief = {
+  id: string;
+  status: string;
+  type: string;
+  reason: string;
+  createdAt: string;
+} | null;
 
 type OrderItemRow = {
   id: string;
@@ -22,24 +32,84 @@ type OrderItemRow = {
   } | null;
 };
 
+type OrderRow = {
+  id: string;
+  total: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  deliveredAt?: string | null;
+  trackingNumber?: string | null;
+  disputeCount?: number;
+  returnRequest: ReturnRequestBrief;
+  items: OrderItemRow[];
+};
+
+function clientCanOpenReturn(o: OrderRow): boolean {
+  if (o.status !== "DELIVERED") return false;
+  if (o.returnRequest) return false;
+  if ((o.disputeCount ?? 0) > 0) return false;
+  const ref = o.deliveredAt ? new Date(o.deliveredAt) : new Date(o.updatedAt);
+  return Date.now() - ref.getTime() <= 30 * 24 * 60 * 60 * 1000;
+}
+
+function returnStatusLabel(status: string): string {
+  switch (status) {
+    case "PENDING":
+      return "En attente";
+    case "APPROVED":
+      return "Approuvé";
+    case "REJECTED":
+      return "Refusé";
+    case "REFUNDED":
+      return "Remboursé";
+    default:
+      return status;
+  }
+}
+
+function returnStatusClass(status: string): string {
+  switch (status) {
+    case "PENDING":
+      return "bg-amber-100 text-amber-900";
+    case "APPROVED":
+      return "bg-emerald-100 text-emerald-900";
+    case "REJECTED":
+      return "bg-red-100 text-red-900";
+    case "REFUNDED":
+      return "bg-slate-200 text-slate-800";
+    default:
+      return "bg-shop-surface text-shop-muted";
+  }
+}
+
+function requestTypeLabel(t: string): string {
+  switch (t) {
+    case "RETURN":
+      return "Retour";
+    case "REFUND":
+      return "Remboursement";
+    case "DISPUTE":
+      return "Litige";
+    default:
+      return t;
+  }
+}
+
 export default function CommandesPage() {
   const { formatOrderPrice, t, locale } = usePreferences();
-  const [orders, setOrders] = useState<
-    {
-      id: string;
-      total: number;
-      status: string;
-      createdAt: string;
-      trackingNumber?: string | null;
-      items: OrderItemRow[];
-    }[]
-  >([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [modalOrderId, setModalOrderId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     void fetch("/api/orders", { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setOrders(d.orders ?? []));
+      .then((d) => setOrders((d.orders ?? []) as OrderRow[]));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const copyId = (id: string) => {
     void navigator.clipboard.writeText(id);
@@ -130,7 +200,7 @@ export default function CommandesPage() {
                 );
               })}
             </ul>
-            <div className="mt-3 flex flex-wrap gap-3 border-t border-shop-border pt-3">
+            <div className="mt-3 flex flex-col gap-2 border-t border-shop-border pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <a
                 href={`/api/orders/${o.id}/invoice`}
                 className="text-xs font-medium text-shop-cyan hover:underline"
@@ -144,10 +214,33 @@ export default function CommandesPage() {
                 <Package className="size-3.5" />
                 Suivi colis
               </Link>
+              {o.returnRequest ?
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${returnStatusClass(o.returnRequest.status)}`}
+                >
+                  Demande : {returnStatusLabel(o.returnRequest.status)} — {requestTypeLabel(o.returnRequest.type)} (
+                  {returnReasonLabel(o.returnRequest.reason)})
+                </span>
+              : clientCanOpenReturn(o) ?
+                <button
+                  type="button"
+                  onClick={() => setModalOrderId(o.id)}
+                  className="inline-flex rounded-xl border border-shop-cyan/40 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-900 hover:bg-cyan-100"
+                >
+                  Retourner un article
+                </button>
+              : null}
             </div>
           </li>
         ))}
       </ul>
+      {modalOrderId ?
+        <ReturnRequestModal
+          orderId={modalOrderId}
+          onClose={() => setModalOrderId(null)}
+          onSubmitted={load}
+        />
+      : null}
     </>
   );
 }

@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 const LINKS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/commandes", label: "Commandes" },
+  { href: "/admin/retours", label: "Retours" },
   { href: "/admin/vendeurs", label: "Vendeurs" },
   { href: "/admin/promo-produits", label: "Promo produits" },
   { href: "/admin/parametres", label: "Réglages" },

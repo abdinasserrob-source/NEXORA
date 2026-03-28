@@ -1,11 +1,14 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getCategoryBranchIdsBySlug } from "@/lib/category-tree";
+import { normalizeSearchQuery, searchTokens } from "@/lib/search-tokens";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const q = url.searchParams.get("q") ?? "";
+  const qRaw = url.searchParams.get("q") ?? "";
+  const qNorm = normalizeSearchQuery(qRaw);
+  const tokens = searchTokens(qNorm);
   const category = url.searchParams.get("category");
   const brandIds = url.searchParams.get("brands")?.split(",").filter(Boolean) ?? [];
   const min = url.searchParams.get("min");
@@ -23,11 +26,19 @@ export async function GET(req: Request) {
     seller: { banned: false },
   };
 
-  if (q) {
+  if (tokens.length > 0) {
+    where.AND = tokens.map((t) => ({
+      OR: [
+        { name: { contains: t, mode: "insensitive" as const } },
+        { description: { contains: t, mode: "insensitive" as const } },
+        { slug: { contains: t, mode: "insensitive" as const } },
+      ],
+    }));
+  } else if (qNorm.length >= 2) {
     where.OR = [
-      { name: { contains: q } },
-      { description: { contains: q } },
-      { slug: { contains: q } },
+      { name: { contains: qNorm, mode: "insensitive" as const } },
+      { description: { contains: qNorm, mode: "insensitive" as const } },
+      { slug: { contains: qNorm, mode: "insensitive" as const } },
     ];
   }
 

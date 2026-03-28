@@ -116,8 +116,36 @@ export async function GET(req: Request) {
       },
       carrier: true,
       zone: true,
+      returnReqs: { take: 1 },
+      _count: { select: { disputes: true } },
     },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json({ orders });
+  return NextResponse.json({
+    orders: orders.map((o) => {
+      const rr = o.returnReqs[0];
+      return {
+        id: o.id,
+        total: o.total,
+        status: o.status,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+        deliveredAt: o.deliveredAt,
+        trackingNumber: o.trackingNumber,
+        disputeCount: o._count.disputes,
+        returnRequest: rr
+          ? {
+              id: rr.id,
+              status: rr.status,
+              type: rr.type,
+              reason: rr.reason,
+              createdAt: rr.createdAt,
+            }
+          : null,
+        items: o.items,
+        carrier: o.carrier,
+        zone: o.zone,
+      };
+    }),
+  });
 }

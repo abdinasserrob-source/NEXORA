@@ -20,6 +20,7 @@ import {
   UserCircle,
   Sparkles,
   Star,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -30,6 +31,7 @@ const ITEMS: { href: string; label: string; icon: ComponentType<{ className?: st
     { href: "/admin/inventaire", label: "Inventaire", icon: Package },
     { href: "/admin/promo-produits", label: "Promo produits", icon: Megaphone },
     { href: "/admin/commandes", label: "Commandes", icon: ShoppingBag },
+    { href: "/admin/retours", label: "Retours & SAV", icon: RotateCcw },
     { href: "/admin/clients", label: "Clients", icon: Users },
     { href: "/admin/transactions", label: "Transactions", icon: CreditCard },
     { href: "/admin/marketing", label: "Marketing", icon: Megaphone },

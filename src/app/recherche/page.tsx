@@ -3,9 +3,9 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Camera, Mic, Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
-import toast from "react-hot-toast";
+import { SearchMediaButtons } from "@/components/SearchMediaButtons";
 
 type Brand = { id: string; name: string; _count?: { products: number } };
 type ProductRow = {
@@ -50,7 +50,6 @@ function SearchInner() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [imageMessage, setImageMessage] = useState<string | null>(null);
-  const [isListening, setIsListening] = useState(false);
   const [isImageSearching, setIsImageSearching] = useState(false);
 
   useEffect(() => {
@@ -110,7 +109,7 @@ function SearchInner() {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ type: "SEARCH", query: qUrl, path: "/recherche" }),
-    });
+    }).catch(() => {});
   }, [spKey, qUrl, minUrl, maxUrl, brandsUrl, sortUrl, ratingUrl]);
 
   const brandsWithStock = useMemo(
@@ -125,59 +124,6 @@ function SearchInner() {
   const inp =
     "w-full rounded-xl border border-shop-border bg-white px-3 py-2 text-sm text-shop-text outline-none focus:border-shop-cyan focus:ring-2 focus:ring-shop-cyan/20";
   const hasVisualSearchState = isImageSearching || imageMessage !== null;
-
-  const startVoiceSearch = () => {
-    const SR =
-      typeof window !== "undefined"
-        ? ((window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
-            (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition)
-        : null;
-    if (!SR) {
-      toast.error("Recherche vocale non supportée par ce navigateur.");
-      return;
-    }
-    const rec = new SR();
-    rec.lang = "fr-FR";
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.onstart = () => setIsListening(true);
-    rec.onend = () => setIsListening(false);
-    rec.onerror = () => {
-      setIsListening(false);
-      toast.error("Erreur microphone");
-    };
-    rec.onresult = (ev: any) => {
-      const transcript = String(ev?.results?.[0]?.[0]?.transcript ?? "").trim();
-      if (!transcript) return;
-      setDraftQ(transcript);
-      const p = new URLSearchParams(sp.toString());
-      p.set("q", transcript);
-      router.replace(`/recherche?${p.toString()}`, { scroll: false });
-    };
-    rec.start();
-  };
-
-  const onPickImage = async (file: File) => {
-    setIsImageSearching(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await fetch("/api/search/image", { method: "POST", body: fd });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        toast.error(typeof d.error === "string" ? d.error : "Analyse image impossible");
-        return;
-      }
-      const q = typeof d.query === "string" ? d.query : "";
-      const prods = (d.products ?? []) as ProductRow[];
-      setImageMessage(typeof d.message === "string" ? d.message : null);
-      setProducts(prods);
-      setTotal(prods.length);
-      if (q) setDraftQ(q);
-    } finally {
-      setIsImageSearching(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-shop-bg pb-16 pt-8">
@@ -215,30 +161,30 @@ function SearchInner() {
             >
               Rechercher
             </button>
-            <label
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-shop-border bg-white px-3 py-2.5 text-shop-muted hover:bg-shop-bg"
-              title="Rechercher par image"
-            >
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (f) void onPickImage(f);
+            <div className="flex shrink-0 items-center gap-1.5">
+              <SearchMediaButtons
+                onVoiceResult={(text) => {
+                  const t = text.trim();
+                  setDraftQ(t);
+                  const p = new URLSearchParams(sp.toString());
+                  if (t.length >= 2) p.set("q", t);
+                  else p.delete("q");
+                  router.replace(`/recherche?${p.toString()}`, { scroll: false });
                 }}
+                onImageSuccess={(d) => {
+                  const q = typeof d.query === "string" ? d.query.trim() : "";
+                  const prods = (d.products ?? []) as ProductRow[];
+                  setImageMessage(typeof d.message === "string" ? d.message : null);
+                  setProducts(prods);
+                  setTotal(prods.length);
+                  if (q) setDraftQ(q);
+                  const p = new URLSearchParams(sp.toString());
+                  if (q.length >= 2) p.set("q", q);
+                  router.replace(`/recherche?${p.toString()}`, { scroll: false });
+                }}
+                onImageLoadingChange={setIsImageSearching}
               />
-              <Camera className="size-4" />
-            </label>
-            <button
-              type="button"
-              onClick={startVoiceSearch}
-              className={`inline-flex items-center justify-center rounded-xl border border-shop-border bg-white px-3 py-2.5 text-shop-muted hover:bg-shop-bg ${isListening ? "ring-2 ring-shop-cyan/40" : ""}`}
-              title="Recherche vocale"
-            >
-              <Mic className="size-4" />
-            </button>
+            </div>
           </form>
         </div>
 

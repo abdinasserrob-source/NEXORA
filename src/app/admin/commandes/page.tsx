@@ -79,6 +79,7 @@ export default function AdminCommandesPage() {
                   <option value="SHIPPED">Expédiée</option>
                   <option value="DELIVERED">Livrée</option>
                   <option value="CANCELLED">Annulée</option>
+                  <option value="REFUNDED">Remboursée</option>
                 </select>
                 <button
                   type="button"

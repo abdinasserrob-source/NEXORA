@@ -64,7 +64,7 @@ export default function AccountDashboardPage() {
   const u = data.user;
   const display =
     [u.firstName, u.lastName].filter(Boolean).join(" ") || u.name || u.email.split("@")[0];
-  const activeOrders = orders.filter((o) => !["DELIVERED", "CANCELLED"].includes(o.status)).length;
+  const activeOrders = orders.filter((o) => !["DELIVERED", "CANCELLED", "REFUNDED"].includes(o.status)).length;
   const latest = orders[0];
 
   return (

@@ -3,15 +3,50 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { returnReasonLabel } from "@/lib/return-request-shared";
 
 type Card = { id: string; brand: string; last4: string; expMonth: number; expYear: number };
+
+type ReturnRow = {
+  id: string;
+  orderId: string;
+  orderTotal: number;
+  orderStatus: string;
+  type: string;
+  reason: string;
+  description: string;
+  status: string;
+  adminNote: string | null;
+  createdAt: string;
+};
+
+function typeFr(t: string) {
+  if (t === "RETURN") return "Retour produit";
+  if (t === "REFUND") return "Remboursement";
+  if (t === "DISPUTE") return "Litige";
+  return t;
+}
+
+function statusClass(s: string) {
+  if (s === "PENDING") return "bg-amber-100 text-amber-950";
+  if (s === "APPROVED") return "bg-emerald-100 text-emerald-950";
+  if (s === "REJECTED") return "bg-red-100 text-red-950";
+  if (s === "REFUNDED") return "bg-slate-200 text-slate-800";
+  return "bg-shop-bg text-shop-muted";
+}
+
+function statusFr(s: string) {
+  if (s === "PENDING") return "En attente";
+  if (s === "APPROVED") return "Approuvé";
+  if (s === "REJECTED") return "Refusé";
+  if (s === "REFUNDED") return "Remboursé";
+  return s;
+}
 
 export default function PaiementPage() {
   const [tab, setTab] = useState<"cartes" | "remboursements">("cartes");
   const [cards, setCards] = useState<Card[]>([]);
-  const [returns, setReturns] = useState<
-    { id: string; status: string; reason: string; createdAt: string; product: { name: string } }[]
-  >([]);
+  const [returns, setReturns] = useState<ReturnRow[]>([]);
   const [brand, setBrand] = useState<"Visa" | "Mastercard" | "PayPal">("Visa");
   const [last4, setLast4] = useState("");
   const [expM, setExpM] = useState(12);
@@ -147,19 +182,39 @@ export default function PaiementPage() {
       {tab === "remboursements" && (
         <div className="mt-6">
           <p className="text-sm text-shop-muted">
-            Demandes de retour liées à vos commandes. Pour en créer une, ouvrez{" "}
+            Toutes vos demandes de retour, remboursement ou litige. Pour en créer une :{" "}
             <Link href="/compte/commandes" className="text-shop-cyan">
               Mes commandes
             </Link>
             .
           </p>
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-4 space-y-3">
             {returns.length === 0 && <li className="text-sm text-shop-muted">Aucune demande.</li>}
             {returns.map((r) => (
-              <li key={r.id} className="rounded-xl border border-shop-border bg-shop-bg px-4 py-3 text-sm">
-                <span className="font-medium text-shop-text">{r.product.name}</span> — {r.status}
-                <p className="text-xs text-shop-muted">{r.reason}</p>
-                <p className="text-xs text-shop-muted">{new Date(r.createdAt).toLocaleString("fr-FR")}</p>
+              <li key={r.id} className="rounded-xl border border-shop-border bg-shop-bg p-4 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-mono text-xs text-shop-muted">Commande {r.orderId.slice(0, 14)}…</p>
+                    <p className="mt-1 font-semibold text-shop-text">
+                      {typeFr(r.type)} · {returnReasonLabel(r.reason)}
+                    </p>
+                    <p className="mt-1 text-xs text-shop-muted">
+                      {r.orderTotal.toFixed(2)} € — statut commande : {r.orderStatus}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${statusClass(r.status)}`}>
+                    {statusFr(r.status)}
+                  </span>
+                </div>
+                <p className="mt-2 text-shop-text">{r.description}</p>
+                {r.adminNote ?
+                  <p className="mt-2 rounded-lg border border-shop-border bg-white px-3 py-2 text-xs text-shop-muted">
+                    <span className="font-semibold text-shop-navy">Réponse NEXORA :</span> {r.adminNote}
+                  </p>
+                : null}
+                <p className="mt-2 text-xs text-shop-muted">
+                  {new Date(r.createdAt).toLocaleString("fr-FR")}
+                </p>
               </li>
             ))}
           </ul>

@@ -45,7 +45,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   const updated = await prisma.order.update({
     where: { id },
-    data: { status: parsed.data.status },
+    data: {
+      status: parsed.data.status,
+      ...(parsed.data.status === "DELIVERED" ? { deliveredAt: new Date() } : {}),
+    },
   });
 
   return NextResponse.json({ ok: true, order: { id: updated.id, status: updated.status } });

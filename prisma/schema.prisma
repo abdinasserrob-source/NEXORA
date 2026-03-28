@@ -41,6 +41,7 @@ model User {
   newsletter        NewsletterSub?
   notifications     Notification[]
   orders            Order[]
+  returnRequests    ReturnRequest[]
   passwordResets    PasswordResetToken[]
   products          Product[]                @relation("SellerProducts")
   recoFeedback      RecommendationFeedback[]
@@ -359,6 +360,8 @@ model Order {
   zoneId         String?
   invoiceUrl     String?
   paymentStatus  PaymentTxStatus      @default(AUTHORIZED)
+  /// Renseignée quand la commande passe en DELIVERED (délai retour 30 j.)
+  deliveredAt    DateTime?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   disputes       Dispute[]
@@ -439,15 +442,22 @@ model PaymentTransaction {
 }
 
 model ReturnRequest {
-  id        String       @id @default(cuid())
-  orderId   String
-  userId    String
-  productId String
-  reason    String
-  status    ReturnStatus @default(PENDING)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id          String            @id @default(cuid())
+  orderId     String            @unique
+  userId      String
+  type        ReturnRequestType
+  reason      String
+  description String
+  photoUrl    String?
+  status      ReturnStatus      @default(PENDING)
+  adminNote   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Dispute {
@@ -634,6 +644,13 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  REFUNDED
+}
+
+enum ReturnRequestType {
+  RETURN
+  REFUND
+  DISPUTE
 }
 
 enum PaymentTxStatus {
