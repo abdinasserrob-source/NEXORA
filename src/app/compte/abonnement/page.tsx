@@ -19,22 +19,14 @@ export default function AbonnementPage() {
   return (
     <>
       <h1 className="text-2xl font-bold text-shop-navy">Abonnement & chatbot</h1>
-      <p className="mt-2 text-sm text-shop-muted">
-        <strong>Sans abonnement</strong> : le chatbot utilise des <strong>règles et intentions</strong> (mots-clés :
-        livraison, retours, promo, compte…). Il comprend mal les questions libres complexes.
-      </p>
-      <p className="mt-2 text-sm text-shop-muted">
-        <strong>Avec NEXORA+</strong> : si la clé <code className="rounded bg-shop-bg px-1">OPENAI_API_KEY</code> est
-        configurée sur le serveur, le chatbot répond via <strong>OpenAI</strong> (modèle configurable).
-      </p>
+    
+    
 
       <div className="mt-8 rounded-2xl border border-shop-cyan/40 bg-gradient-to-br from-shop-cyan/10 to-shop-surface p-6">
         <p className="text-lg font-semibold text-shop-navy">
           Statut : {premium ? "NEXORA+ actif" : "Formule standard"}
         </p>
-        <p className="mt-2 text-sm text-shop-muted">
-          Ceci est une <strong>démo</strong> : activez ou désactivez l’accès au mode IA pour votre compte.
-        </p>
+      
         <div className="mt-4 flex flex-wrap gap-3">
           {!premium ? (
             <button
@@ -54,7 +46,7 @@ export default function AbonnementPage() {
                 }
               }}
             >
-              Activer NEXORA+ (démo)
+              Activer NEXORA+ 
             </button>
           ) : (
             <button
@@ -78,11 +70,7 @@ export default function AbonnementPage() {
             </button>
           )}
         </div>
-        <p className="mt-4 text-xs text-shop-muted">
-          Admin : ajoutez <code className="rounded bg-shop-bg px-1">OPENAI_API_KEY</code> dans{" "}
-          <code className="rounded bg-shop-bg px-1">.env</code> pour que le mode premium appelle réellement l’API
-          OpenAI.
-        </p>
+        
       </div>
     </>
   );

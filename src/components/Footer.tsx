@@ -77,8 +77,8 @@ export function Footer() {
         <div>
           <p className="font-semibold text-shop-text">{t("footer.contact")}</p>
           <ul className="mt-3 space-y-2 text-sm text-shop-muted">
-            <li>12 avenue Tech, 75002 Paris</li>
-            <li>+33 1 23 45 67 89</li>
+            <li>12 Balbala, 77105 Djibouti</li>
+            <li>+253 77 24 09 95</li>
             <li>support@nexora.shop</li>
           </ul>
         </div>
